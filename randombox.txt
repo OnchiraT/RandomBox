@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Number Shuffle</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #e0f7ff;
+        }
+        .container {
+            text-align: center;
+            max-width: 600px;
+            padding: 20px;
+        }
+        .box-container {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            margin: 20px auto;
+            perspective: 1000px;
+        }
+        .box {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.5s;
+        }
+        .box-front, .box-top {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            backface-visibility: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 36px;
+            color: #FFD700;
+            background-color: #000080;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 128, 0.3);
+        }
+        .box-top {
+            transform: rotateX(-180deg);
+            background-color: #1E3A5F;
+        }
+        .box.open {
+            transform: rotateX(180deg);
+        }
+        .shake {
+            animation: shake 0.5s infinite;
+        }
+        @keyframes shake {
+            0% { transform: rotate(0deg); }
+            25% { transform: rotate(-5deg) translate(-5px); }
+            50% { transform: rotate(5deg) translate(5px); }
+            75% { transform: rotate(-5deg) translate(-5px); }
+            100% { transform: rotate(0deg); }
+        }
+        .selected-number {
+            animation: highlight 0.5s ease-out;
+            background: radial-gradient(circle, #FFD700 0%, transparent 70%);
+            padding: 20px;
+            border-radius: 50%;
+        }
+        @keyframes highlight {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            opacity: 0;
+        }
+        @keyframes confetti-fall {
+            0% { transform: translateY(-100px) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100px) rotate(360deg); opacity: 0; }
+        }
+        input {
+            padding: 10px;
+            font-size: 16px;
+            width: 300px;
+            margin: 10px;
+            border: 2px solid #000080;
+            border-radius: 5px;
+            background-color: white;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #000080;
+            color: #FFD700;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #1E3A5F;
+            box-shadow: 0 2px 8px rgba(0, 0, 128, 0.3);
+            transform: translateY(-2px);
+        }
+        .result {
+            font-size: 24px;
+            margin-top: 20px;
+            color: #000080;
+            font-weight: bold;
+            padding: 10px;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        .result.show {
+            opacity: 1;
+        }
+        .number-pool {
+            margin-top: 20px;
+            padding: 10px;
+            border: 2px solid #000080;
+            border-radius: 5px;
+            min-height: 50px;
+            background-color: white;
+        }
+        .number-tag {
+            display: inline-block;
+            padding: 5px 10px;
+            margin: 3px;
+            background-color: #000080;
+            color: #FFD700;
+            border-radius: 15px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        .number-tag.fade-out {
+            transform: scale(0);
+            opacity: 0;
+        }
+        h1 {
+            color: #000080;
+            text-shadow: 2px 2px 4px rgba(0, 0, 128, 0.2);
+        }
+        h3 {
+            color: #000080;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎲 กล่องสุ่มตัวเลข</h1>
+        <input type="text" id="numbers" placeholder="ใส่ตัวเลขคั่นด้วยเครื่องหมายคอมม่า เช่น 1, 2, 3, 4, 5">
+        <br>
+        <button onclick="shuffle()">🎲 สุ่ม!</button>
+        <button onclick="resetNumbers()">🔄 เริ่มใหม่</button>
+        <div class="box-container">
+            <div id="box" class="box">
+                <div class="box-front">?</div>
+                <div class="box-top"></div>
+            </div>
+        </div>
+        <div id="result" class="result"></div>
+        <div>
+            <h3>เลขที่เหลือ:</h3>
+            <div id="numberPool" class="number-pool"></div>
+        </div>
+    </div>
+
+    <script>
+        let numbers = [];
+        let remainingNumbers = [];
+
+        function createConfetti(x, y) {
+            const colors = ['#FFD700', '#000080', '#1E3A5F', '#FFE55C'];
+            for (let i = 0; i < 30; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = x + 'px';
+                confetti.style.top = y + 'px';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.animation = `confetti-fall ${1 + Math.random()}s linear forwards`;
+                confetti.style.left = `${x + (Math.random() - 0.5) * 100}px`;
+                document.body.appendChild(confetti);
+                setTimeout(() => confetti.remove(), 1000);
+            }
+        }
+
+        function updateNumberPool() {
+            const pool = document.getElementById('numberPool');
+            pool.innerHTML = remainingNumbers.map(n => 
+                `<span class="number-tag">${n}</span>`
+            ).join(' ');
+        }
+
+        function resetNumbers() {
+            const numbersInput = document.getElementById('numbers').value;
+            numbers = numbersInput.split(',').map(n => n.trim()).filter(n => n !== '');
+            remainingNumbers = [...numbers];
+            updateNumberPool();
+            
+            const box = document.getElementById('box');
+            box.classList.remove('open');
+            box.querySelector('.box-front').textContent = '?';
+            box.querySelector('.box-top').innerHTML = '';
+            document.getElementById('result').textContent = '';
+            document.getElementById('result').classList.remove('show');
+        }
+
+        function shuffle() {
+            if (remainingNumbers.length === 0) {
+                alert('ไม่มีเลขให้สุ่มแล้ว กรุณากดเริ่มใหม่');
+                return;
+            }
+
+            const box = document.getElementById('box');
+            const boxTop = box.querySelector('.box-top');
+            const result = document.getElementById('result');
+            
+            box.classList.remove('open');
+            box.classList.add('shake');
+            
+            let shuffleCount = 0;
+            const shuffleInterval = setInterval(() => {
+                const randomIndex = Math.floor(Math.random() * remainingNumbers.length);
+                boxTop.textContent = remainingNumbers[randomIndex];
+            }, 100);
+
+            setTimeout(() => {
+                clearInterval(shuffleInterval);
+                box.classList.remove('shake');
+                
+                const finalIndex = Math.floor(Math.random() * remainingNumbers.length);
+                const selectedNumber = remainingNumbers[finalIndex];
+                
+                boxTop.innerHTML = `<div class="selected-number">${selectedNumber}</div>`;
+                box.classList.add('open');
+                
+                const boxRect = box.getBoundingClientRect();
+                createConfetti(boxRect.left + boxRect.width/2, boxRect.top + boxRect.height/2);
+                
+                result.textContent = `✨ ผลการสุ่ม: ${selectedNumber} ✨`;
+                result.classList.add('show');
+                
+                remainingNumbers.splice(finalIndex, 1);
+                setTimeout(updateNumberPool, 300);
+            }, 1500);
+        }
+
+        document.getElementById('numbers').addEventListener('input', resetNumbers);
+    </script>
+</body>
+</html>
